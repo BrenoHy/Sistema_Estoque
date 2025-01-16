@@ -2,6 +2,8 @@ import tkinter as tk
 from tkinter import messagebox
 from database.db_config import create_tables, connect  
 
+# Tornar entry_busca global
+entry_busca = None
 
 def iniciar():
     create_tables()
@@ -164,7 +166,7 @@ def editar_produto(id_produto):
 
 # Deletar Produtos
 def deletar_produto(id_produto):
-    resposta = messagebox.askyesno("Confirmar Exclusão", "Tem Certeza que deseja excluir este oridyti?")
+    resposta = messagebox.askyesno("Confirmar Exclusão", "Tem Certeza que deseja excluir este produto?")
     if resposta:
         conn = connect()
         cursor = conn.cursor()
@@ -173,6 +175,56 @@ def deletar_produto(id_produto):
         conn.close()
         messagebox.showinfo("Sucesso", "Produto excluído com sucesso!")
         visualizar_produtos() # Atualiza a janela para refletir a exclusão
+
+# Buscar Produtos
+def buscar_produtos():
+    # Agora entry_busca está corretamente associada a um campo de entrada
+    termo_busca = entry_busca.get()
+
+    # Janela para visualizar produtos
+    visualizar_window = tk.Toplevel(root)
+    visualizar_window.title("Produtos Cadastrados")
+
+    # Criar a lista de produtos com base na pesquisa
+    conn = connect()
+    cursor = conn.cursor()
+
+    # Consulta SQL para buscar produtos pelo nome ou categoria 
+    cursor.execute('''
+        SELECT id, nome, categoria, quantidade, preco_compra, preco_venda
+        FROM produtos
+        WHERE nome LIKE ? OR categoria LIKE ?
+    ''', (f"%{termo_busca}%", f"%{termo_busca}%"))
+    produtos = cursor.fetchall()
+    conn.close()
+
+    # Cabeçalho da tabela 
+    tk.Label(visualizar_window, text="ID | Nome | Categoria | Quantidade | Preço de Compra | Preço de Venda").pack(pady=10)
+
+    # Exibir os produtos
+    if produtos:
+        for produto in produtos:
+            tk.Label(visualizar_window, text=f"{produto[0]} | {produto[1]} | {produto[2]} | {produto[3]} | {produto[4]} | {produto[5]}").pack(pady=5)
+            # Botão de editar para o produto atual
+            botao_editar = tk.Button(visualizar_window, text="Editar", command=lambda id_produto=produto[0]: editar_produto(id_produto))
+            botao_editar.pack(pady=5)
+            # Botão de deletar para o produto atual
+            botao_deletar = tk.Button(visualizar_window, text="Deletar", command=lambda id_produto=produto[0]: deletar_produto(id_produto))
+            botao_deletar.pack(pady=5)
+    else:
+        tk.Label(visualizar_window, text="Nenhum produto encontrado.").pack(pady=10)
+
+    visualizar_window.mainloop()
+
+# Barra de busca
+def adicionar_barra_busca():
+    global entry_busca  # Tornando entry_busca global
+    tk.Label(root, text="Buscar Produto:").pack(pady=5)
+    entry_busca = tk.Entry(root)
+    entry_busca.pack(pady=5)
+
+    botao_buscar = tk.Button(root, text="Buscar", command=buscar_produtos)
+    botao_buscar.pack(pady=5)
 
 # Criação da janela principal
 root = tk.Tk()
@@ -189,6 +241,9 @@ botao_cadastrar_produto.pack(pady=20)
 # Adicionando um botão para visualizar os produtos cadastrados
 botao_visualizar_produtos = tk.Button(root, text="Visualizar Produtos", command=visualizar_produtos)
 botao_visualizar_produtos.pack(pady=20)
+
+# Adicionando a barra de busca
+adicionar_barra_busca()
 
 # Executando a interface
 root.mainloop()
